@@ -1,35 +1,34 @@
-# Generates cpp.json with snippets for VSCode
-
-import os
 import json
 import sys
+from pathlib import Path
 
 snippets = {}
+root = Path(__file__).resolve().parent
 
-for subdir in os.walk('.'):
-  if subdir[0] == '.' or '.git' in subdir[0]:
-    continue
-  for filename in subdir[2]:
-    name, extension = filename.split('.')
-    if extension != 'cpp':
-      continue
+source_dirs = [root / "io", root / "template"]
 
-    if name in snippets:
-      print(f'error: duplicate snippet {name}', file=sys.stderr)
-      exit(0)
+for source_dir in source_dirs:
+    if not source_dir.is_dir():
+        continue
+    for path in sorted(source_dir.rglob("*.cpp")):
+        relative = path.relative_to(root)
+        if any(part.startswith(".") for part in relative.parts):
+            continue
 
-    path = subdir[0] + '/' + filename
-    with open(path, 'r') as f:
-      snippet = {
-        "prefix": name,
-        "body": [line.rstrip() for line in f.readlines()],
-        "description": name
-      }
-      snippets[name] = snippet
+        name = path.stem
+        if name in snippets:
+            print(f"error: duplicate snippet {name}", file=sys.stderr)
+            raise SystemExit(1)
 
-    print(f'generated snippet {name}', file=sys.stderr)
+        snippet = {
+            "prefix": name,
+            "body": path.read_text(encoding="utf-8").splitlines(),
+            "description": name,
+        }
+        snippets[name] = snippet
 
-with open('cpp.json', 'w') as f:
-  f.write(json.dumps(snippets, indent=2))
+        print(f"generated snippet {name}", file=sys.stderr)
 
-print('done', file=sys.stderr)
+(root / "cpp.json").write_text(json.dumps(snippets, indent=2), encoding="utf-8")
+
+print("done", file=sys.stderr)
