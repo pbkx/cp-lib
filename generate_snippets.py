@@ -1,21 +1,37 @@
-import json
+﻿import json
 import sys
 from pathlib import Path
 
 snippets = {}
 root = Path(__file__).resolve().parent
 
-source_dirs = [root / "io", root / "template"]
+sources = [
+    {"dir": root / "io", "pattern": "*.cpp", "name_prefix": "", "use_relative_name": False},
+    {"dir": root / "template", "pattern": "*.cpp", "name_prefix": "", "use_relative_name": False},
+    {
+        "dir": root / "third_party" / "ac-library" / "atcoder",
+        "pattern": "*.hpp",
+        "name_prefix": "acl_",
+        "use_relative_name": True,
+    },
+]
 
-for source_dir in source_dirs:
+for source in sources:
+    source_dir = source["dir"]
     if not source_dir.is_dir():
         continue
-    for path in sorted(source_dir.rglob("*.cpp")):
+
+    for path in sorted(source_dir.rglob(source["pattern"])):
         relative = path.relative_to(root)
         if any(part.startswith(".") for part in relative.parts):
             continue
 
-        name = path.stem
+        if source["use_relative_name"]:
+            local_name = "_".join(path.relative_to(source_dir).with_suffix("").parts).replace("-", "_")
+            name = f'{source["name_prefix"]}{local_name}'
+        else:
+            name = f'{source["name_prefix"]}{path.stem}'
+
         if name in snippets:
             print(f"error: duplicate snippet {name}", file=sys.stderr)
             raise SystemExit(1)
